@@ -4,16 +4,16 @@ import ast
 
 app = FastAPI()
 
-# CORS middleware so frontend can access the API
+# Allow frontend to access the backend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Change this in prod!
+    allow_origins=["*"],  # 🔐 Limit this in production
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# === AST to JSON Conversion ===
+# === Parser ===
 def to_json(node):
     if isinstance(node, ast.BoolOp):
         op = 'and' if isinstance(node.op, ast.And) else 'or'
@@ -39,15 +39,16 @@ def to_json(node):
     elif isinstance(node, ast.Constant):
         return node.value
     else:
-        return "unknown"
+        return {"unknown_node": ast.dump(node)}
 
-# === /parse Endpoint ===
+# === API Route ===
 @app.post("/parse")
 async def parse_code(request: Request):
     data = await request.json()
     code = data.get("code", "")
+
     try:
-        tree = ast.parse(code, mode='eval')  # Only supports expressions, not full scripts
+        tree = ast.parse(code, mode='eval')
         parsed = to_json(tree.body)
         return {"parsed": parsed}
     except Exception as e:
